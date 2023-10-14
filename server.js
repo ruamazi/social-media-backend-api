@@ -4,6 +4,7 @@ import connectDB from "./db/connectDB.js";
 import cookieParser from "cookie-parser";
 import usersRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import cors from "cors";
 dotenv.config();
 
 const app = express();
@@ -13,6 +14,7 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(cors());
 
 app.use("/api/users", usersRoutes);
 app.use("/api/posts", postRoutes);
