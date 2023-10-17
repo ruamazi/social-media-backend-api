@@ -23,8 +23,7 @@ const userSchema = mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default:
-        "https://upload.wikimedia.org/wikipedia/commons/2/2c/Default_pfp.svg",
+      default: process.env.DEFAULT_PROFILE_PIC,
     },
     followers: {
       type: [String],
