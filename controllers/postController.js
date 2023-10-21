@@ -31,7 +31,7 @@ export const createPost = async (req, res) => {
     }
     const newPost = new Post({ postedBy: userId, text, img });
     await newPost.save();
-    return res.status(201).json({ message: "Post has been created.", newPost });
+    return res.status(201).json(newPost);
   } catch (error) {
     res.status(500).json({ error: error.message });
     console.log({ error: "Error in Create post function", error });
@@ -43,16 +43,24 @@ export const deletePost = async (req, res) => {
   try {
     const post = await Post.findById(id);
     if (!post) {
-      return res.status(404).json("Post not found!");
+      return res.status(404).json({ error: "Post not found!" });
     }
     if (post.postedBy.toString() !== req.user._id.toString()) {
-      return res.status(401).json("Unauthorized to delete this post!");
+      return res
+        .status(401)
+        .json({ error: "Unauthorized to delete this post!" });
     }
+
+    if (post.img) {
+      const imgId = post.img.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(imgId);
+    }
+
     await Post.findByIdAndDelete(id);
-    return res.status(200).json("Post has been deleted.");
+    return res.status(200).json({ message: "Post has been deleted." });
   } catch (error) {
     res.status(500).json({ error: error.message });
-    console.log("Error in delete post function", error.message);
+    console.log("Error in deletePost function", error.message);
   }
 };
 
@@ -81,7 +89,7 @@ export const getFeedPosts = async (req, res) => {
     const feedPosts = await Post.find({ postedBy: { $in: following } }).sort({
       createdAt: -1,
     });
-    return res.status(200).json({ feedPosts });
+    return res.status(200).json(feedPosts);
   } catch (error) {
     res.status(500).json({ error: error.message });
     console.log("Error in feed posts function", error.message);
@@ -190,6 +198,50 @@ export const replyToPost = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
     console.log("Error in reply to post function", error.message);
+  }
+};
+
+export const getUserPosts = async (req, res) => {
+  const { username } = req.params;
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(400).json({ error: "User not found!" });
+    }
+    const posts = await Post.find({ postedBy: user._id }).sort({
+      createdAt: -1,
+    });
+    res.status(200).json(posts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+    console.log("Error in getUserPosts function", error.message);
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  const { postId, commentId } = req.params;
+
+  try {
+    const post = await Post.findById(postId);
+    const replyToDelete = post.replies.id(commentId);
+    if (!post || !replyToDelete) {
+      return res.status(404).json({ error: "Post or reply not found!" });
+    }
+    if (
+      post.postedBy.toString() === req.user._id.toString() ||
+      replyToDelete.username === req.user.username
+    ) {
+      post.replies.pull(replyToDelete);
+      await post.save();
+      return res.status(200).json(post);
+    }
+
+    return res
+      .status(401)
+      .json({ error: "Unauthorized to delete this reply!" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+    console.log("Error in deleteComment func", error.message);
   }
 };
 
